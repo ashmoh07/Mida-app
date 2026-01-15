@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mida Pro - Ultimate Steganography</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/steganography.js/1.0.3/steganography.min.js"></script>
+    <style>
+        :root { --bg: #f8f9fa; --text: #212529; --card: #ffffff; --primary: #0d6efd; --success: #198754; --accent: #6610f2; }
+        [data-theme="dark"] { --bg: #121212; --text: #e0e0e0; --card: #1e1e1e; --primary: #375a7f; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); transition: 0.3s; margin: 0; padding: 15px; }
+        .container { max-width: 500px; margin: auto; background: var(--card); padding: 25px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        button { width: 100%; padding: 15px; margin: 10px 0; border: none; border-radius: 12px; background: var(--primary); color: white; cursor: pointer; font-size: 16px; font-weight: bold; }
+        input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; background: var(--bg); color: var(--text); }
+        .hidden { display: none; }
+        .about-card { background: var(--bg); padding: 15px; border-radius: 12px; margin-bottom: 10px; border-right: 5px solid var(--accent); text-align: right; font-size: 14px; }
+        .loader { display: none; color: var(--success); font-weight: bold; margin: 10px 0; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2>ميدا برو | Mida Pro</h2>
+        <button onclick="toggleTheme()" style="width: auto; padding: 5px 10px; background: transparent; border: 1px solid var(--primary); color: var(--primary);">☀️/🌙</button>
+    </div>
+
+    <div id="main-page">
+        <button onclick="showPage('encrypt-page')">🔒 تشفير (أي ملف داخل صورة)</button>
+        <button onclick="showPage('decrypt-page')">🔓 فك تشفير (استخراج الملف)</button>
+        <button onclick="showPage('about-page')" style="background: var(--accent);">💎 من نحن</button>
+    </div>
+
+    <div id="encrypt-page" class="hidden">
+        <h3>تشفير ملفات شامل</h3>
+        <label>صورة الغلاف (Carrier):</label>
+        <input type="file" id="carrier-img" accept="image/*">
+        <label>الملف المراد إخفاءه (أي نوع):</label>
+        <input type="file" id="secret-file">
+        <input type="password" id="enc-pass" placeholder="كلمة السر (إجبارية)">
+        <div id="enc-loader" class="loader">⚙️ جاري دمج الملف وتحويله...</div>
+        <button id="enc-btn" onclick="handleEncryption()" style="background: var(--success);">تشفير وتحميل الصورة</button>
+        <button onclick="showPage('main-page')" style="background: #666;">رجوع</button>
+    </div>
+
+    <div id="decrypt-page" class="hidden">
+        <h3>فك التشفير الحقيقي</h3>
+        <label>اختر الصورة التي تحتوي على الملف:</label>
+        <input type="file" id="stego-img" accept="image/*">
+        <input type="password" id="dec-pass" placeholder="أدخل كلمة السر">
+        <div id="dec-loader" class="loader">🔍 جاري استخراج الملف الأصلي...</div>
+        <button id="dec-btn" onclick="handleDecryption()" style="background: #fd7e14;">فك التشفير وحفظ الملف</button>
+        <button onclick="showPage('main-page')" style="background: #666;">رجوع</button>
+    </div>
+
+    <div id="about-page" class="hidden">
+        <h3>عن Mida Pro</h3>
+        <div class="about-card"><h4>تشفير البيانات الشامل</h4><p>Mida يقوم بتحويل أي نوع ملف (صوت، فيديو، مستندات) إلى كود رقمي ويحقنه داخل البكسلات.</p></div>
+        <div class="about-card" style="border-right-color: var(--success);"><h4>الخصوصية</h4><p>لا يتم رفع ملفاتك على أي سيرفر، كل شيء يحدث داخل متصفحك فقط.</p></div>
+        <button onclick="showPage('main-page')" style="background: #666;">عودة للرئيسية</button>
+    </div>
+</div>
+
+<script>
+    function showPage(id) {
+        document.querySelectorAll('.container > div:not(.header)').forEach(div => div.classList.add('hidden'));
+        document.getElementById(id).classList.remove('hidden');
+    }
+
+    function toggleTheme() {
+        document.body.setAttribute('data-theme', document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    }
+
+    // الدالة المسؤولة عن تحويل أي ملف وتحميله داخل الصورة
+    async function handleEncryption() {
+        const carrier = document.getElementById('carrier-img').files[0];
+        const secret = document.getElementById('secret-file').files[0];
+        const pass = document.getElementById('enc-pass').value;
+
+        if (!carrier || !secret || pass.length < 4) {
+            alert("برجاء اختيار الملفات وكتابة كلمة سر (4 رموز على الأقل)");
+            return;
+        }
+
+        document.getElementById('enc-loader').style.display = 'block';
+        
+        // تحويل الملف السري لـ Base64 مع حفظ اسمه ونوعه
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const fileData = {
+                name: secret.name,
+                type: secret.type,
+                content: e.target.result
+            };
+            const jsonStr = JSON.stringify(fileData) + "[[PASS:" + pass + "]]";
+
+            // دمج البيانات في الصورة
+            const imgReader = new FileReader();
+            imgReader.onload = function(ev) {
+                const stegoData = steg.encode(jsonStr, ev.target.result);
+                const link = document.createElement('a');
+                link.href = stegoData;
+                link.download = "mida_protected_" + secret.name.split('.')[0] + ".png";
+                link.click();
+                
+                alert("✅ تم التشفير بنجاح! سيتم الرجوع للرئيسية.");
+                location.reload(); // رجوع تلقائي وتنظيف للبيانات
+            };
+            imgReader.readAsDataURL(carrier);
+        };
+        reader.readAsDataURL(secret);
+    }
+
+    // الدالة المسؤولة عن استخراج الملف وإعادته لأصله
+    function handleDecryption() {
+        const stegoImg = document.getElementById('stego-img').files[0];
+        const pass = document.getElementById('dec-pass').value;
+
+        if (!stegoImg || !pass) return alert("اختر الصورة والباسورد");
+
+        document.getElementById('dec-loader').style.display = 'block';
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const decoded = steg.decode(e.target.result);
+                if (decoded.includes("[[PASS:" + pass + "]]")) {
+                    const cleanData = decoded.split("[[PASS:")[0];
+                    const fileObj = JSON.parse(cleanData);
+                    
+                    // تحميل الملف المستخرج بنوعه الأصلي
+                    const link = document.createElement('a');
+                    link.href = fileObj.content;
+                    link.download = fileObj.name;
+                    link.click();
+                    
+                    alert("🔓 تم فك التشفير واستعادة الملف بنجاح!");
+                    location.reload();
+                } else {
+                    alert("❌ كلمة السر غير صحيحة!");
+                    document.getElementById('dec-loader').style.display = 'none';
+                }
+            } catch (err) {
+                alert("فشل الاستخراج: الصورة قد لا تحتوي على ملفات مشفرة.");
+                document.getElementById('dec-loader').style.display = 'none';
+            }
+        };
+        reader.readAsDataURL(stegoImg);
+    }
+</script>
+</body>
+</html>
+  
